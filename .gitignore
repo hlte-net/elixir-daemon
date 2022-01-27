@@ -1,5 +1,6 @@
-.keyfile
+.keyfile*
 /data/
+*.sqlite3
 
 ## Mix-defined:
 

@@ -1,11 +1,12 @@
 defmodule HLTE.MixProject do
+  require Logger
+
   use Mix.Project
 
   def project do
     [
-      app: :hlte_daemon,
+      app: :hlte,
       version: "0.1.0",
-      api_version: "20220126",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -13,15 +14,21 @@ defmodule HLTE.MixProject do
   end
 
   def application do
+    envArgs = [
+      header: fe(:header),
+      port: fe(:port),
+      db_path: fe(:db_path),
+      key_path: fe(:key_path)
+    ]
+
+    Logger.notice("App started with config #{inspect(envArgs)}")
+
     [
       extra_applications: [:logger],
-      mod:
-        {HLTE.Application,
-         [
-           port: 31337,
-           local_data_path: "./data",
-           key_path: "./.keyfile"
-         ]}
+      mod: {HLTE.Application, envArgs},
+      env: [
+        args: envArgs
+      ]
     ]
   end
 
@@ -35,4 +42,6 @@ defmodule HLTE.MixProject do
       {:exqlite, "~> 0.8.6"}
     ]
   end
+
+  defp fe(k), do: Application.fetch_env!(:hlte, k)
 end

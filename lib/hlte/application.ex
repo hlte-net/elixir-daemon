@@ -8,13 +8,13 @@ defmodule HLTE.Application do
 
   @impl true
   def start(_type, args) do
-    IO.puts("START [#{inspect(args)}] <<#{args[:port]}>>")
-
     case load_key(args[:key_path]) do
       {:ok, key} ->
-        IO.puts("GOT KEY! #{inspect(key)}")
-        # persist key!
-        start_link(args[:port])
+        :ok = :persistent_term.put(:key, key)
+        keyHash = :crypto.hash(:sha256, key) |> :binary.encode_hex() |> :string.lowercase()
+        Logger.notice("Loaded #{byte_size(key)}-byte key with SHA256 checksum of #{keyHash}")
+
+        start_link(args)
 
       {:error, reason, expand_path} ->
         Logger.emergency(~s/Failed to load key file at #{expand_path}: "#{reason}"/)
@@ -32,8 +32,8 @@ defmodule HLTE.Application do
 
       {:ok, stat} ->
         {:error,
-         "file permissions (#{inspect(stat.mode &&& 0xFFF, base: :octal)}) are too open: it cannot not be readable or writable by anyone but the owner.",
-         expand_path}
+         "file mode (#{inspect(stat.mode &&& 0xFFF, base: :octal)}) is too permissive: " <>
+           "it cannot not be readable or writable by anyone but the owner.", expand_path}
 
       {:error, reason} ->
         {:error, reason, expand_path}
@@ -45,7 +45,9 @@ defmodule HLTE.Application do
 
   def start_link(args) do
     children = [
-      {HLTE.HTTP, [args]}
+      {Task.Supervisor, name: HLTE.AsyncSupervisor},
+      {HLTE.HTTP, [args[:port], args[:header]]},
+      {HLTE.DB, [args[:db_path]]}
     ]
 
     opts = [strategy: :one_for_one, name: HLTE.Supervisor]
