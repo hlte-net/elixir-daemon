@@ -11,20 +11,31 @@ defmodule HLTE.Redis do
     {:not_configured}
   end
 
-  def post_persistence_work(rxTime, hmac, %{"uri" => uri, "secondaryURI" => suri}) when is_integer(rxTime) do
+  def post_persistence_work(rxTime, hmac, %{"uri" => uri, "secondaryURI" => suri})
+      when is_integer(rxTime) do
     {:ok, conn} = new_conn()
-    {:ok, entryID} = Redix.command(conn, ["XADD", key("persistence"), "*", "uri", uri, "secondaryURI", suri])
+
+    {:ok, entryID} =
+      Redix.command(conn, ["XADD", key("persistence"), "*", "uri", uri, "secondaryURI", suri])
+
     Redix.stop(conn)
     entryID
   end
 
   defp key_prefix() when :persistent_term.get(:key_prefix, nil) === nil do
     key_hash = :persistent_term.get(:key_hash)
-    key_prefix = Enum.join([
-      "hlte",
-      Application.fetch_env!(:hlte, :api_version),
-      String.slice(key_hash, 8) <> "-" <> String.slice(key_hash, String.length(key_hash) - 8, String.length(key_hash))
-    ], @joiner_char)
+
+    key_prefix =
+      Enum.join(
+        [
+          "hlte",
+          Application.fetch_env!(:hlte, :api_version),
+          String.slice(key_hash, 8) <>
+            "-" <> String.slice(key_hash, String.length(key_hash) - 8, String.length(key_hash))
+        ],
+        @joiner_char
+      )
+
     :persistent_term.put(:key_prefix, key_prefix)
     Logger.info("Using redis key prefix \"#{key_prefix}\"")
     key_prefix
