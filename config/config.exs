@@ -5,7 +5,8 @@ config :hlte,
   header: "x-hlte",
   port: 31337,
   db_path: "./data.sqlite3",
-  key_path: "./.keyfile"
+  key_path: "./.keyfile",
+  redis_url: nil
 
 import_config("#{config_env()}.config.exs")
 

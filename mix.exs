@@ -39,7 +39,9 @@ defmodule HLTE.MixProject do
       # JSON encoding/decoding
       {:jason, "~> 1.2"},
       # SQLite3 client library
-      {:exqlite, "~> 0.8.6"}
+      {:exqlite, "~> 0.8.6"},
+      # Redis client library
+      {:redix, "~> 1.1"}
     ]
   end
 
