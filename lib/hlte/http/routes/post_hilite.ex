@@ -36,13 +36,11 @@ defmodule HLTE.HTTP.Route.PostHilite do
   def persist(bodyText, bodyHmac, calcHmac) when bodyHmac === calcHmac do
     dec = Jason.decode!(bodyText)
     rxTime = HLTE.DB.persist(dec, bodyHmac)
+    entryID = HLTE.Redis.post_persistence_work(rxTime, bodyHmac, dec)
 
     Logger.info(
-      "Persisted hilite for #{URI.parse(Map.get(dec, "uri")).host} at #{floor(rxTime / 1.0e9)}"
+      "Persisted hilite for #{URI.parse(Map.get(dec, "uri")).host} at #{floor(rxTime / 1.0e9)}, work ID #{entryID}"
     )
-
-    entryID = HLTE.Redis.post_persistence_work(rxTime, bodyHmac, dec)
-    Logger.info("Submitted for persistence with ID #{entryID}")
 
     true
   end

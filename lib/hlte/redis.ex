@@ -41,7 +41,7 @@ defmodule HLTE.Redis do
               "hlte",
               Application.fetch_env!(:hlte, :api_version),
               String.slice(key_hash, 0..8) <>
-                "-" <>
+                ".." <>
                 String.slice(key_hash, String.length(key_hash) - 8, String.length(key_hash))
             ],
             @joiner_char
