@@ -41,10 +41,8 @@ defmodule HLTE.HTTP.Route.PostHilite do
       "Persisted hilite for #{URI.parse(Map.get(dec, "uri")).host} at #{floor(rxTime / 1.0e9)}"
     )
 
-    case HLTE.Redis.post_persistence_work(rxTime, bodyHmac, dec) do
-      entryID -> Logger.info("Submitted for persistence with ID #{entryID}")
-      {:not_configured} -> Logger.debug("Redis not configured!")
-    end
+    entryID = HLTE.Redis.post_persistence_work(rxTime, bodyHmac, dec)
+    Logger.info("Submitted for persistence with ID #{entryID}")
 
     true
   end
