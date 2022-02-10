@@ -52,7 +52,7 @@ defmodule HLTE.HTTP.Route.SNSIngest do
     Logger.info("S3:      #{bucket}/#{objectKey}")
     Logger.info("****** /MAIL RX ******")
 
-    HLTE.EmailProcessor.from_bucket(bucket, objectKey, source, destList, subject)
+    HLTE.EmailProcessor.from_bucket(bucket, objectKey, source, subject)
 
     :ok
   end

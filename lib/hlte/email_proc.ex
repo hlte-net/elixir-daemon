@@ -10,8 +10,8 @@ defmodule HLTE.EmailProcessor do
     GenServer.start_link(__MODULE__, :ok, opts)
   end
 
-  def from_bucket(bucket, key, from, to, subject) do
-    GenServer.cast(EmailProcessor, {:process_from_bucket, bucket, key, from, to, subject})
+  def from_bucket(bucket, key, from, subject) do
+    GenServer.cast(EmailProcessor, {:process_from_bucket, bucket, key, from, subject})
   end
 
   @impl true
@@ -25,7 +25,7 @@ defmodule HLTE.EmailProcessor do
   end
 
   @impl true
-  def handle_cast({:process_from_bucket, bucket, key, from, to, subject}, state) do
+  def handle_cast({:process_from_bucket, bucket, key, from, subject}, state) do
     case Enum.find(Application.fetch_env!(:hlte, :sns_whitelist), fn whiteListedAddress ->
            from === whiteListedAddress
          end) do
@@ -36,17 +36,28 @@ defmodule HLTE.EmailProcessor do
           {:cont, cur, acc <> cur}
         end
 
-        after_fun = fn _cur, acc ->
-          {:cont, acc}
+        after_fun = fn
+          "" -> {:cont, ""}
+          acc -> {:cont, acc, ""}
         end
 
-        s3stream =
+        parsedMsg =
           ExAws.S3.download_file(bucket, key, :memory)
           |> ExAws.stream!()
           |> Stream.chunk_while("", chunk_fun, after_fun)
+          |> Enum.to_list()
+          |> Enum.at(0)
+          |> Mail.Parsers.RFC2822.parse()
 
         IO.puts("------")
-        IO.puts(s3stream)
+        IO.puts(subject)
+        IO.puts("------")
+
+        case parsedMsg.multipart do
+          true -> IO.puts(inspect(parsedMsg.parts))
+          false -> IO.puts(inspect(parsedMsg.body))
+        end
+
         IO.puts("------")
 
       nil ->
