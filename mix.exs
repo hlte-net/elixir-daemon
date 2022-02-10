@@ -46,7 +46,10 @@ defmodule HLTE.MixProject do
       # AWS
       {:ex_aws, "~> 2.2"},
       {:ex_aws_s3, "~> 2.3"},
-      {:hackney, "~> 1.18"}
+      {:hackney, "~> 1.18"},
+
+      # Mail parsing
+      {:mail, "~> 0.2"}
     ]
   end
 

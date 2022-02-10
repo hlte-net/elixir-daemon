@@ -29,10 +29,31 @@ defmodule HLTE.EmailProcessor do
     case Enum.find(Application.fetch_env!(:hlte, :sns_whitelist), fn whiteListedAddress ->
            from === whiteListedAddress
          end) do
-      ^from -> IO.puts("GOOD FROM!!")
-      nil -> IO.puts("BAD FROM!!!!")
+      ^from ->
+        IO.puts("GOOD FROM!!")
+
+        chunk_fun = fn cur, acc ->
+          {:cont, cur, acc <> cur}
+        end
+
+        after_fun = fn _cur, acc ->
+          {:cont, acc}
+        end
+
+        s3stream =
+          ExAws.S3.download_file(bucket, key, :memory)
+          |> ExAws.stream!()
+          |> Stream.chunk_while("", chunk_fun, after_fun)
+
+        IO.puts("------")
+        IO.puts(s3stream)
+        IO.puts("------")
+
+      nil ->
+        IO.puts("BAD FROM!!!!")
     end
 
+    # {:ok, _content} = ExAws.S3.delete_object(bucket, key) |> ExAws.request
     {:noreply, [state]}
   end
 
