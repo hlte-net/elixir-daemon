@@ -28,7 +28,8 @@ defmodule HLTE.HTTP do
 
          # GET
          {"/version", HLTE.HTTP.Route.Version, []},
-         {"/search", HLTE.HTTP.Route.Search, [headerName]}
+         {"/search", HLTE.HTTP.Route.Search, [headerName]},
+         {"/sns", HLTE.HTTP.Route.SNSIngest, []}
        ]}
     ])
   end
