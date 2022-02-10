@@ -18,8 +18,7 @@ defmodule HLTE.MixProject do
       header: fe(:header),
       port: fe(:port),
       db_path: fe(:db_path),
-      key_path: fe(:key_path),
-      sns_whitelist: fe(:sns_whitelist)
+      key_path: fe(:key_path)
     ]
 
     Logger.notice("App started with config #{inspect(envArgs)}")

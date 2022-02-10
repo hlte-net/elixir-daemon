@@ -46,7 +46,6 @@ defmodule HLTE.HTTP.Route.SNSIngest do
        ) do
     Logger.info("****** MAIL RX ******")
     Logger.info("At:      #{rxDate} (#{ts})")
-    Logger.info("Msg ID:  #{mId}")
     Logger.info("From:    #{source}")
     Logger.info("To:      #{destList |> Enum.join(", ")}")
     Logger.info("Subject: #{subject}")
