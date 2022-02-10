@@ -7,7 +7,7 @@ config :hlte,
   db_path: "./data.sqlite3",
   key_path: "./.keyfile",
   redis_url: nil,
-  sns_ingest_whitelist: []
+  sns_whitelist: []
 
 import_config("#{config_env()}.config.exs")
 

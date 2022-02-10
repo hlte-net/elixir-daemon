@@ -44,16 +44,17 @@ defmodule HLTE.HTTP.Route.SNSIngest do
             }
           }}
        ) do
-    IO.puts("****** MAIL RX ******")
-    IO.puts("At:      #{ts}")
-    IO.puts("At:      #{rxDate}")
-    IO.puts("Msg ID:  #{mId}")
-    IO.puts("From:    #{source}")
-    IO.puts("From:    #{fromList |> Enum.join(", ")}")
-    IO.puts("To:      #{destList |> Enum.join(", ")}")
-    IO.puts("Subject: #{subject}")
-    IO.puts("S3:      #{bucket}/#{objectKey}")
-    IO.puts("****** /MAIL RX ******")
+    Logger.info("****** MAIL RX ******")
+    Logger.info("At:      #{rxDate} (#{ts})")
+    Logger.info("Msg ID:  #{mId}")
+    Logger.info("From:    #{source}")
+    Logger.info("To:      #{destList |> Enum.join(", ")}")
+    Logger.info("Subject: #{subject}")
+    Logger.info("S3:      #{bucket}/#{objectKey}")
+    Logger.info("****** /MAIL RX ******")
+
+    HLTE.EmailProcessor.from_bucket(bucket, objectKey, source, destList, subject)
+
     :ok
   end
 

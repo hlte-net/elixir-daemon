@@ -6,8 +6,8 @@ defmodule HLTE.EmailProcessor do
     GenServer.start_link(__MODULE__, :ok, opts)
   end
 
-  def process_from_bucket(bucket, key) do
-    GenServer.cast(EmailProcessor, {:process_from_bucket, bucket, key})
+  def from_bucket(bucket, key, from, to, subject) do
+    GenServer.cast(EmailProcessor, {:process_from_bucket, bucket, key, from, to, subject})
   end
 
   @impl true
@@ -16,14 +16,28 @@ defmodule HLTE.EmailProcessor do
   end
 
   @impl true
-  def handle_call(a, b, c) do
-    IO.puts("handle_call(#{inspect(a)}, #{inspect(b)}, #{inspect(c)})")
+  def handle_call(_sel, _from, state) do
+    {:reply, state}
   end
 
   @impl true
-  def handle_cast({:process_from_bucket, bucket, key}, state) do
+  def handle_cast({:process_from_bucket, bucket, key, from, to, subject}, state) do
     IO.puts("!!!handle_cast(#{inspect(bucket)}, #{inspect(key)})")
     IO.puts(inspect(state))
+    IO.puts(inspect(Application.fetch_env!(:hlte, :sns_whitelist)))
+    IO.puts(inspect(from))
+
+    IO.puts(
+      inspect(
+        Enum.find(Application.fetch_env!(:hlte, :sns_whitelist), fn wle -> from === wle end)
+      )
+    )
+
+    case Enum.find(Application.fetch_env!(:hlte, :sns_whitelist), fn wle -> from === wle end) do
+      ^from -> IO.puts("GOOD FROM!!")
+      nil -> IO.puts("BAD FROM!!!!")
+    end
+
     {:noreply, [state]}
   end
 

@@ -54,12 +54,6 @@ defmodule HLTE.Application do
     ]
 
     opts = [strategy: :one_for_one, name: HLTE.Supervisor]
-    rv = Supervisor.start_link(children, opts)
-
-    IO.puts("SHITSNGIGS")
-    HLTE.EmailProcessor.process_from_bucket("foo", "bar")
-    IO.puts("/SHITSNGIGS")
-
-    rv
+    Supervisor.start_link(children, opts)
   end
 end

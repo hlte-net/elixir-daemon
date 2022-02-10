@@ -90,23 +90,27 @@ defmodule HLTE.DB do
        ) do
     rxTime = System.os_time(:nanosecond)
 
-    Task.Supervisor.async_nolink(HLTE.AsyncSupervisor, fn ->
-      {:ok, conn} = get_conn(:persistent_term.get(:db_path))
+    entryID =
+      Task.await(
+        Task.Supervisor.async(HLTE.AsyncSupervisor, fn ->
+          {:ok, conn} = get_conn(:persistent_term.get(:db_path))
 
-      {:ok, _, _, _} =
-        Basic.exec(conn, "insert into hlte values(?, ?, ?, ?, ?, ?)", [
-          hmac,
-          rxTime,
-          uri,
-          suri,
-          data,
-          ann
-        ])
+          {:ok, _, _, _} =
+            Basic.exec(conn, "insert into hlte values(?, ?, ?, ?, ?, ?)", [
+              hmac,
+              rxTime,
+              uri,
+              suri,
+              data,
+              ann
+            ])
 
-      Basic.close(conn)
-    end)
+          Basic.close(conn)
+          HLTE.Redis.post_persistence_work(rxTime, hmac, %{"uri" => uri, "secondaryURI" => suri})
+        end)
+      )
 
-    rxTime
+    {:ok, rxTime, entryID}
   end
 
   defp search_async(query, limit, sortDir) do
