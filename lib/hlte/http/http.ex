@@ -25,11 +25,11 @@ defmodule HLTE.HTTP do
        [
          # POST
          {"/", HLTE.HTTP.Route.PostHilite, [headerName]},
+         {"/sns", HLTE.HTTP.Route.SNSIngest, []},
 
          # GET
          {"/version", HLTE.HTTP.Route.Version, []},
-         {"/search", HLTE.HTTP.Route.Search, [headerName]},
-         {"/sns", HLTE.HTTP.Route.SNSIngest, []}
+         {"/search", HLTE.HTTP.Route.Search, [headerName]}
        ]}
     ])
   end

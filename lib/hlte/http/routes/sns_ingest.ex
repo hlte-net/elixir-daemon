@@ -52,7 +52,7 @@ defmodule HLTE.HTTP.Route.SNSIngest do
     IO.puts("From:    #{fromList |> Enum.join(", ")}")
     IO.puts("To:      #{destList |> Enum.join(", ")}")
     IO.puts("Subject: #{subject}")
-    IO.puts("S3:      #{bucket}/#{objectKey}}")
+    IO.puts("S3:      #{bucket}/#{objectKey}")
     IO.puts("****** /MAIL RX ******")
     :ok
   end

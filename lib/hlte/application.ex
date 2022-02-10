@@ -48,11 +48,18 @@ defmodule HLTE.Application do
   def start_link(args) do
     children = [
       {Task.Supervisor, name: HLTE.AsyncSupervisor},
+      {HLTE.EmailProcessor, name: EmailProcessor},
       {HLTE.HTTP, [args[:port], args[:header]]},
       {HLTE.DB, [args[:db_path]]}
     ]
 
     opts = [strategy: :one_for_one, name: HLTE.Supervisor]
-    Supervisor.start_link(children, opts)
+    rv = Supervisor.start_link(children, opts)
+
+    IO.puts("SHITSNGIGS")
+    HLTE.EmailProcessor.process_from_bucket("foo", "bar")
+    IO.puts("/SHITSNGIGS")
+
+    rv
   end
 end

@@ -41,7 +41,12 @@ defmodule HLTE.MixProject do
       # SQLite3 client library
       {:exqlite, "~> 0.8.6"},
       # Redis client library
-      {:redix, "~> 1.1"}
+      {:redix, "~> 1.1"},
+
+      # AWS
+      {:ex_aws, "~> 2.2"},
+      {:ex_aws_s3, "~> 2.3"},
+      {:hackney, "~> 1.18"}
     ]
   end
 
