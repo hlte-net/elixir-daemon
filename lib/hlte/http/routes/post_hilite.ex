@@ -35,10 +35,10 @@ defmodule HLTE.HTTP.Route.PostHilite do
 
   def persist(bodyText, bodyHmac, calcHmac) when bodyHmac === calcHmac do
     dec = Jason.decode!(bodyText)
-    rxTime = HLTE.DB.persist(dec, bodyHmac)
+    {:ok, rxTime, entryID} = HLTE.DB.persist(dec, bodyHmac)
 
     Logger.info(
-      "Persisted hilite for #{URI.parse(Map.get(dec, "uri")).host} at #{floor(rxTime / 1.0e9)}"
+      "Persisted hilite for #{URI.parse(Map.get(dec, "uri")).host} at #{floor(rxTime / 1.0e9)}, work ID #{entryID}"
     )
 
     true

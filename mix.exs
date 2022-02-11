@@ -6,7 +6,7 @@ defmodule HLTE.MixProject do
   def project do
     [
       app: :hlte,
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -21,7 +21,7 @@ defmodule HLTE.MixProject do
       key_path: fe(:key_path)
     ]
 
-    Logger.notice("App started with config #{inspect(envArgs)}")
+    Logger.notice("App v#{project()[:version]} started with config #{inspect(envArgs)}")
 
     [
       extra_applications: [:logger],
@@ -34,12 +34,14 @@ defmodule HLTE.MixProject do
 
   defp deps do
     [
-      # HTTP/REST library
       {:cowboy, "~> 2.9"},
-      # JSON encoding/decoding
       {:jason, "~> 1.2"},
-      # SQLite3 client library
-      {:exqlite, "~> 0.8.6"}
+      {:exqlite, "~> 0.8.6"},
+      {:redix, "~> 1.1"},
+      {:ex_aws, "~> 2.2"},
+      {:ex_aws_s3, "~> 2.3"},
+      {:hackney, "~> 1.18"},
+      {:mail, "~> 0.2"}
     ]
   end
 

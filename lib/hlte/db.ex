@@ -46,20 +46,33 @@ defmodule HLTE.DB do
   end
 
   def persist(%{"uri" => uri, "secondaryURI" => suri, "data" => data, "annotation" => ann}, hmac) do
-    rxTime = System.os_time(:nanosecond)
+    persist_async(
+      uri,
+      suri,
+      data,
+      ann,
+      hmac
+    )
+  end
 
-    Task.Supervisor.async_nolink(HLTE.AsyncSupervisor, fn ->
-      persist_async(
-        uri,
-        suri,
-        data,
-        ann,
-        hmac,
-        rxTime
-      )
-    end)
+  def persist(%{"uri" => uri, "secondaryURI" => suri, "annotation" => ann}, hmac) do
+    persist_async(
+      uri,
+      suri,
+      nil,
+      ann,
+      hmac
+    )
+  end
 
-    rxTime
+  def persist(%{"uri" => uri, "data" => data}, hmac) do
+    persist_async(
+      uri,
+      nil,
+      data,
+      nil,
+      hmac
+    )
   end
 
   def search(query, limit, newestFirst) do
@@ -83,22 +96,31 @@ defmodule HLTE.DB do
          suri,
          data,
          ann,
-         hmac,
-         rxTime
+         hmac
        ) do
-    {:ok, conn} = get_conn(:persistent_term.get(:db_path))
+    rxTime = System.os_time(:nanosecond)
 
-    {:ok, _, _, _} =
-      Basic.exec(conn, "insert into hlte values(?, ?, ?, ?, ?, ?)", [
-        hmac,
-        rxTime,
-        uri,
-        suri,
-        data,
-        ann
-      ])
+    entryID =
+      Task.await(
+        Task.Supervisor.async(HLTE.AsyncSupervisor, fn ->
+          {:ok, conn} = get_conn(:persistent_term.get(:db_path))
 
-    Basic.close(conn)
+          {:ok, _, _, _} =
+            Basic.exec(conn, "insert into hlte values(?, ?, ?, ?, ?, ?)", [
+              hmac,
+              rxTime,
+              uri,
+              suri,
+              data,
+              ann
+            ])
+
+          Basic.close(conn)
+          HLTE.Redis.post_persistence_work(rxTime, hmac, %{"uri" => uri, "secondaryURI" => suri})
+        end)
+      )
+
+    {:ok, rxTime, entryID}
   end
 
   defp search_async(query, limit, sortDir) do

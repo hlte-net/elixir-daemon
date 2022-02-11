@@ -10,8 +10,10 @@ defmodule HLTE.Application do
   def start(_type, args) do
     case load_key(args[:key_path]) do
       {:ok, key} ->
-        :ok = :persistent_term.put(:key, key)
         keyHash = :crypto.hash(:sha256, key) |> :binary.encode_hex() |> :string.lowercase()
+        :ok = :persistent_term.put(:key, key)
+        :ok = :persistent_term.put(:key_hash, keyHash)
+
         Logger.notice("Loaded #{byte_size(key)}-byte key with SHA256 checksum of #{keyHash}")
 
         start_link(args)
@@ -46,6 +48,7 @@ defmodule HLTE.Application do
   def start_link(args) do
     children = [
       {Task.Supervisor, name: HLTE.AsyncSupervisor},
+      {HLTE.EmailProcessor, name: EmailProcessor},
       {HLTE.HTTP, [args[:port], args[:header]]},
       {HLTE.DB, [args[:db_path]]}
     ]

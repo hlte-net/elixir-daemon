@@ -25,6 +25,7 @@ defmodule HLTE.HTTP do
        [
          # POST
          {"/", HLTE.HTTP.Route.PostHilite, [headerName]},
+         {"/sns", HLTE.HTTP.Route.SNSIngest, []},
 
          # GET
          {"/version", HLTE.HTTP.Route.Version, []},
