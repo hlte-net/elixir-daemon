@@ -34,7 +34,10 @@ defmodule HLTE.EmailProcessor do
         Logger.error("Message from non-whitelisted address <#{from}>!")
     end
 
-    # {:ok, _content} = ExAws.S3.delete_object(bucket, key) |> ExAws.request
+    if Application.fetch_env!(:hlte, :delete_sns_s3_post_proc) do
+      {:ok, _content} = ExAws.S3.delete_object(bucket, key) |> ExAws.request()
+    end
+
     {:noreply, [state]}
   end
 
@@ -71,7 +74,7 @@ defmodule HLTE.EmailProcessor do
       HLTE.DB.persist(
         %{
           "uri" => uri,
-          "annotation" => parsed_body
+          "data" => parsed_body
         },
         HLTE.HTTP.calculate_body_hmac(parsed_body)
       )
