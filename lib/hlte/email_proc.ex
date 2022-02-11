@@ -30,8 +30,6 @@ defmodule HLTE.EmailProcessor do
            from === whiteListedAddress
          end) do
       ^from ->
-        IO.puts("GOOD FROM!!")
-
         chunk_fun = fn cur, acc ->
           {:cont, cur, acc <> cur}
         end
@@ -41,27 +39,23 @@ defmodule HLTE.EmailProcessor do
           acc -> {:cont, acc, ""}
         end
 
-        parsedMsg =
+        {content_type, parsed_msg} =
           ExAws.S3.download_file(bucket, key, :memory)
           |> ExAws.stream!()
           |> Stream.chunk_while("", chunk_fun, after_fun)
           |> Enum.to_list()
           |> Enum.at(0)
           |> Mail.Parsers.RFC2822.parse()
+          |> extract_body()
 
         IO.puts("------")
-        IO.puts(subject)
+        IO.puts(content_type)
         IO.puts("------")
-
-        case parsedMsg.multipart do
-          true -> IO.puts(inspect(parsedMsg.parts))
-          false -> IO.puts(inspect(parsedMsg.body))
-        end
-
+        IO.puts(parsed_msg)
         IO.puts("------")
 
       nil ->
-        IO.puts("BAD FROM!!!!")
+        Logger.error("Message from non-whitelisted address <#{from}>!")
     end
 
     # {:ok, _content} = ExAws.S3.delete_object(bucket, key) |> ExAws.request
@@ -72,5 +66,23 @@ defmodule HLTE.EmailProcessor do
   def handle_cast(a, b) do
     IO.puts("handle_cast(#{inspect(a)}, #{inspect(b)})")
     {:noreply}
+  end
+
+  def extract_body(%Mail.Message{:multipart => true, :parts => parts}) do
+    target_part =
+      Enum.find(parts, fn p ->
+        Map.get(p.headers, "content-type") |> Enum.at(0) === "text/plain"
+      end) ||
+        Enum.at(parts, 0)
+
+    {Map.get(target_part.headers, "content-type"), target_part.body}
+  end
+
+  def extract_body(%Mail.Message{
+        :multipart => false,
+        :body => body,
+        :headers => %{"content-type" => c_type}
+      }) do
+    {c_type, body}
   end
 end

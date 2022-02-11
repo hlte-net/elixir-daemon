@@ -14,7 +14,7 @@ defmodule HLTE.Redis do
     {:ok, entryID} =
       Redix.command(conn, [
         "XADD",
-        key(["persistence"]),
+        key("persistence"),
         "*",
         "checksum",
         hmac,
@@ -30,7 +30,7 @@ defmodule HLTE.Redis do
     entryID
   end
 
-  defp key_prefix() do
+  def key_prefix() do
     case :persistent_term.get(:key_prefix, nil) do
       nil ->
         key_hash = :persistent_term.get(:key_hash)
@@ -56,7 +56,8 @@ defmodule HLTE.Redis do
     end
   end
 
-  defp key(suffixList), do: Enum.join(Enum.concat([key_prefix()], suffixList), @joiner_char)
+  def key(suffixStr) when is_bitstring(suffixStr), do: key([suffixStr])
+  def key(suffixList), do: Enum.join(Enum.concat([key_prefix()], suffixList), @joiner_char)
 
   defp new_conn(), do: Redix.start_link(Application.fetch_env!(:hlte, :redis_url))
 end

@@ -36,9 +36,7 @@ defmodule HLTE.HTTP.Route.SNSIngest do
               "source" => source,
               "destination" => destList,
               "commonHeaders" => %{
-                "from" => fromList,
                 "date" => rxDate,
-                "messageId" => mId,
                 "subject" => subject
               }
             }
