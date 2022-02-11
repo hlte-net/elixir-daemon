@@ -8,7 +8,7 @@ config :hlte,
   key_path: "./.keyfile",
   redis_url: nil,
   sns_whitelist: [],
-  delete_sns_s3_on_success: true
+  delete_sns_s3_post_proc: true
 
 import_config("#{config_env()}.config.exs")
 
