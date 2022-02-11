@@ -34,24 +34,13 @@ defmodule HLTE.MixProject do
 
   defp deps do
     [
-      # HTTP/REST library
       {:cowboy, "~> 2.9"},
-
-      # JSON encoding/decoding
       {:jason, "~> 1.2"},
-
-      # SQLite3 client library
       {:exqlite, "~> 0.8.6"},
-
-      # Redis client library
       {:redix, "~> 1.1"},
-
-      # AWS
       {:ex_aws, "~> 2.2"},
       {:ex_aws_s3, "~> 2.3"},
       {:hackney, "~> 1.18"},
-
-      # Mail parsing
       {:mail, "~> 0.2"}
     ]
   end
