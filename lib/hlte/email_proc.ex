@@ -34,7 +34,7 @@ defmodule HLTE.EmailProcessor do
         Logger.error("Message from non-whitelisted address <#{from}>!")
     end
 
-    if Application.fetch_env!(:hlte, :delete_sns_s3_post_proc) do
+    if Application.fetch_env!(:hlte, :delete_sns_s3_post_proc) === true do
       {:ok, _content} = ExAws.S3.delete_object(bucket, key) |> ExAws.request()
     end
 
