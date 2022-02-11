@@ -36,10 +36,13 @@ defmodule HLTE.MixProject do
     [
       # HTTP/REST library
       {:cowboy, "~> 2.9"},
+
       # JSON encoding/decoding
       {:jason, "~> 1.2"},
+
       # SQLite3 client library
       {:exqlite, "~> 0.8.6"},
+
       # Redis client library
       {:redix, "~> 1.1"},
 
