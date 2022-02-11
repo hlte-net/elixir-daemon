@@ -25,29 +25,10 @@ defmodule HLTE.EmailProcessor do
            from === whiteListedAddress
          end) do
       ^from ->
-        chunk_fun = fn cur, acc ->
-          {:cont, cur, acc <> cur}
+        case URI.parse(subject) |> validate_parsed_subject_uri() do
+          :error -> Logger.error("Malformed URI as subject!")
+          host -> stream_and_parse(bucket, key, subject, host)
         end
-
-        after_fun = fn
-          "" -> {:cont, ""}
-          acc -> {:cont, acc, ""}
-        end
-
-        {content_type, parsed_msg} =
-          ExAws.S3.download_file(bucket, key, :memory)
-          |> ExAws.stream!()
-          |> Stream.chunk_while("", chunk_fun, after_fun)
-          |> Enum.to_list()
-          |> Enum.at(0)
-          |> Mail.Parsers.RFC2822.parse()
-          |> extract_body()
-
-        IO.puts("------")
-        IO.puts(inspect(content_type))
-        IO.puts("------")
-        IO.puts(parsed_msg)
-        IO.puts("------")
 
       nil ->
         Logger.error("Message from non-whitelisted address <#{from}>!")
@@ -57,6 +38,47 @@ defmodule HLTE.EmailProcessor do
     {:noreply, [state]}
   end
 
+  def validate_parsed_subject_uri(%URI{:host => host, :scheme => s})
+      when host !== nil and s !== nil,
+      do: host
+
+  def validate_parsed_subject_uri(_bad_uri), do: :error
+
+  def stream_and_parse(bucket, key, uri, host) do
+    {content_type, parsed_body, part_type} =
+      ExAws.S3.download_file(bucket, key, :memory)
+      |> ExAws.stream!()
+      |> Stream.chunk_while(
+        "",
+        fn cur, acc ->
+          {:cont, cur, acc <> cur}
+        end,
+        fn
+          "" -> {:cont, ""}
+          acc -> {:cont, acc, ""}
+        end
+      )
+      |> Enum.to_list()
+      |> Enum.at(0)
+      |> Mail.Parsers.RFC2822.parse()
+      |> extract_body()
+
+    Logger.info(
+      "Parsed #{String.length(parsed_body)} bytes of '#{content_type}' from a #{part_type} message"
+    )
+
+    {:ok, rxTime, entryID} =
+      HLTE.DB.persist(
+        %{
+          "uri" => uri,
+          "annotation" => parsed_body
+        },
+        HLTE.HTTP.calculate_body_hmac(parsed_body)
+      )
+
+    Logger.info("Persisted hilite for #{host} at #{floor(rxTime / 1.0e9)}, work ID #{entryID}")
+  end
+
   def extract_body(%Mail.Message{:multipart => true, :parts => parts}) do
     target_part =
       Enum.find(parts, fn p ->
@@ -64,7 +86,7 @@ defmodule HLTE.EmailProcessor do
       end) ||
         Enum.at(parts, 0)
 
-    {Map.get(target_part.headers, "content-type"), target_part.body}
+    {Map.get(target_part.headers, "content-type") |> Enum.at(0), target_part.body, "multipart"}
   end
 
   def extract_body(%Mail.Message{
@@ -72,6 +94,6 @@ defmodule HLTE.EmailProcessor do
         :body => body,
         :headers => %{"content-type" => content_type}
       }) do
-    {content_type, body}
+    {content_type |> Enum.at(0), body, "mono"}
   end
 end

@@ -65,6 +65,16 @@ defmodule HLTE.DB do
     )
   end
 
+  def persist(%{"uri" => uri, "annotation" => ann}, hmac) do
+    persist_async(
+      uri,
+      nil,
+      nil,
+      ann,
+      hmac
+    )
+  end
+
   def search(query, limit, newestFirst) do
     t0 = :erlang.monotonic_time(:millisecond)
 

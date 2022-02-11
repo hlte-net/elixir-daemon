@@ -32,24 +32,15 @@ defmodule HLTE.HTTP.Route.SNSIngest do
               }
             },
             "mail" => %{
-              "timestamp" => ts,
               "source" => source,
               "commonHeaders" => %{
-                "date" => rxDate,
                 "subject" => subject
               }
             }
           }}
        ) do
-    Logger.info("****** MAIL RX ******")
-    Logger.info("At:      #{rxDate} (#{ts})")
-    Logger.info("From:    #{source}")
-    Logger.info("Subject: #{subject}")
-    Logger.info("S3:      #{bucket}/#{objectKey}")
-    Logger.info("****** /MAIL RX ******")
-
+    Logger.info("Processing SNS from <#{source}>, subject \"#{subject}\"")
     HLTE.EmailProcessor.from_bucket(bucket, objectKey, source, subject)
-
     :ok
   end
 

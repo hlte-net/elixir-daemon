@@ -7,3 +7,7 @@ config :logger,
 
 config :hlte,
   port: 56555
+
+config :logger, :console,
+  format: "$time [$level] $levelpad$message ($metadata)\n",
+  metadata: [:file, :line]
