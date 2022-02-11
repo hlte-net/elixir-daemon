@@ -34,7 +34,6 @@ defmodule HLTE.HTTP.Route.SNSIngest do
             "mail" => %{
               "timestamp" => ts,
               "source" => source,
-              "destination" => destList,
               "commonHeaders" => %{
                 "date" => rxDate,
                 "subject" => subject
@@ -45,7 +44,6 @@ defmodule HLTE.HTTP.Route.SNSIngest do
     Logger.info("****** MAIL RX ******")
     Logger.info("At:      #{rxDate} (#{ts})")
     Logger.info("From:    #{source}")
-    Logger.info("To:      #{destList |> Enum.join(", ")}")
     Logger.info("Subject: #{subject}")
     Logger.info("S3:      #{bucket}/#{objectKey}")
     Logger.info("****** /MAIL RX ******")

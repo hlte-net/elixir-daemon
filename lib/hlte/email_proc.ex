@@ -20,11 +20,6 @@ defmodule HLTE.EmailProcessor do
   end
 
   @impl true
-  def handle_call(_sel, _from, state) do
-    {:reply, state}
-  end
-
-  @impl true
   def handle_cast({:process_from_bucket, bucket, key, from, subject}, state) do
     case Enum.find(Application.fetch_env!(:hlte, :sns_whitelist), fn whiteListedAddress ->
            from === whiteListedAddress
@@ -49,7 +44,7 @@ defmodule HLTE.EmailProcessor do
           |> extract_body()
 
         IO.puts("------")
-        IO.puts(content_type)
+        IO.puts(inspect(content_type))
         IO.puts("------")
         IO.puts(parsed_msg)
         IO.puts("------")
@@ -60,12 +55,6 @@ defmodule HLTE.EmailProcessor do
 
     # {:ok, _content} = ExAws.S3.delete_object(bucket, key) |> ExAws.request
     {:noreply, [state]}
-  end
-
-  @impl true
-  def handle_cast(a, b) do
-    IO.puts("handle_cast(#{inspect(a)}, #{inspect(b)})")
-    {:noreply}
   end
 
   def extract_body(%Mail.Message{:multipart => true, :parts => parts}) do
@@ -81,8 +70,8 @@ defmodule HLTE.EmailProcessor do
   def extract_body(%Mail.Message{
         :multipart => false,
         :body => body,
-        :headers => %{"content-type" => c_type}
+        :headers => %{"content-type" => content_type}
       }) do
-    {c_type, body}
+    {content_type, body}
   end
 end
