@@ -21,7 +21,7 @@ defmodule HLTE.MixProject do
       key_path: fe(:key_path)
     ]
 
-    Logger.notice("App started with config #{inspect(envArgs)}")
+    Logger.notice("App v#{project()[:version]} started with config #{inspect(envArgs)}")
 
     [
       extra_applications: [:logger],

@@ -3,7 +3,7 @@ import Config
 config :hlte,
   api_version: "20220126",
   header: "x-hlte",
-  port: 31337,
+  port: 56555,
   db_path: "./data.sqlite3",
   key_path: "./.keyfile",
   redis_url: nil,
