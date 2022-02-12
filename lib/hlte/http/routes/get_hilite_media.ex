@@ -1,19 +1,16 @@
 defmodule HLTE.HTTP.Route.GetHiliteMedia do
   require Logger
 
-  def init(req, state) when req.method === "HEAD" do
-    handle_allowed(req, state, 204)
-  end
-
-  def init(req, state) when req.method === "GET" do
-    handle_allowed(req, state, 200)
+  def init(req, state) when req.method === "HEAD" or req.method === "GET" do
+    # TODO: AUTH!
+    handle_allowed(req, state)
   end
 
   def init(req, state) do
     {:ok, :cowboy_req.reply(405, req), state}
   end
 
-  def handle_allowed(req, state, final_success_code) do
+  def handle_allowed(req, state) do
     case parse_bindings(req.bindings) do
       [type, fileName, hash, ts] ->
         path_expand = Path.join([Enum.at(state, 1), type]) |> Path.expand()
@@ -31,7 +28,16 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
                   end)
 
                 IO.puts("FINAL REQ #{inspect(final_req)}")
-                {:ok, :cowboy_req.reply(final_success_code, final_req), state}
+
+                case req.method do
+                  "GET" ->
+                    IO.puts("GET! Adding body -- #{inspect({:sendfile, 0, stat.size, full_path})}")
+                    {:ok, :cowboy_req.reply(200,
+                      :cowboy_req.set_resp_body({:sendfile, 0, stat.size, full_path}, final_req)), state}
+
+                  "HEAD" ->
+                    {:ok, :cowboy_req.reply(204, final_req), state}
+                end
 
               _ ->
                 Logger.warn("No metadata found! full_path:#{full_path} hash:#{hash} ts:#{ts}")
@@ -76,13 +82,9 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
 
   def find_media(path, fileName) do
     case File.stat(path) do
-      {:ok, stat} ->
+      {:ok, _stat} ->
         # should only refresh the list when stat.mtime has changed?!
         # could store the cache in ETS
-        IO.puts(
-          "#{path} STAT! #{inspect(stat)} #{inspect(File.ls!(path) |> Enum.map(fn x -> String.split(x, ".") |> Enum.at(0) end))}"
-        )
-
         case File.ls!(path)
              |> Enum.map(fn x -> String.split(x, ".") end)
              |> Enum.filter(fn x -> Enum.at(x, 0) === fileName end)
