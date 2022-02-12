@@ -3,61 +3,60 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
 
   def init(req, state) when req.method === "HEAD" or req.method === "GET" do
     # TODO: AUTH!
-    handle_allowed(req, state)
+    parse_bindings(req.bindings)
+    |> handle_allowed(req, state)
   end
 
   def init(req, state) do
     {:ok, :cowboy_req.reply(405, req), state}
   end
 
-  def handle_allowed(req, state) do
-    case parse_bindings(req.bindings) do
-      [type, fileName, hash, ts] ->
-        path_expand = Path.join([Enum.at(state, 1), type]) |> Path.expand()
+  def handle_allowed([type, fileName, hash, ts], req, state) do
+    path_expand = Path.join([Enum.at(state, 1), type]) |> Path.expand()
 
-        case find_media(path_expand, fileName) do
-          {:ok, [full_path, stat]} ->
-            case metadata(Enum.at(state, 1) |> Path.expand(), type, hash, ts) do
-              %{"headers" => headers} ->
-                req_with_meta_headers =
-                  Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
-                  |> Enum.to_list()
-                  |> Enum.reduce(req, fn {k, v}, acc_req ->
-                    :cowboy_req.set_resp_header(k, v, acc_req)
-                  end)
+    case find_media(path_expand, fileName) do
+      {:ok, [full_path, stat]} ->
+        case metadata(Enum.at(state, 1) |> Path.expand(), type, hash, ts) do
+          %{"headers" => headers} ->
+            req_with_meta_headers =
+              Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
+              |> Enum.to_list()
+              |> Enum.reduce(req, fn {k, v}, acc_req ->
+                :cowboy_req.set_resp_header(k, v, acc_req)
+              end)
 
-                case req.method do
-                  "GET" ->
-                    {:ok,
-                     :cowboy_req.reply(
-                       200,
-                       :cowboy_req.set_resp_body(
-                         {:sendfile, 0, stat.size, full_path},
-                         req_with_meta_headers
-                       )
-                     ), state}
+            case req.method do
+              "GET" ->
+                {:ok,
+                 :cowboy_req.reply(
+                   200,
+                   :cowboy_req.set_resp_body(
+                     {:sendfile, 0, stat.size, full_path},
+                     req_with_meta_headers
+                   )
+                 ), state}
 
-                  "HEAD" ->
-                    {:ok, :cowboy_req.reply(204, req_with_meta_headers), state}
-                end
-
-              _ ->
-                Logger.warn("No metadata found! full_path:#{full_path} hash:#{hash} ts:#{ts}")
-                {:ok, req, state}
+              "HEAD" ->
+                {:ok, :cowboy_req.reply(204, req_with_meta_headers), state}
             end
 
-          {:error, reason} ->
-            if reason !== :not_found do
-              Logger.error("find_media failed: #{reason}")
-            end
-
-            {:ok, :cowboy_req.reply(404, req), state}
+          _ ->
+            Logger.warn("No metadata found! full_path:#{full_path} hash:#{hash} ts:#{ts}")
+            {:ok, req, state}
         end
 
-      :error ->
-        Logger.error("bad bindings: #{inspect(req.bindings)}")
-        {:ok, :cowboy_req.reply(400, req), state}
+      {:error, reason} ->
+        if reason !== :not_found do
+          Logger.error("find_media failed: #{reason}")
+        end
+
+        {:ok, :cowboy_req.reply(404, req), state}
     end
+  end
+
+  def handle_allowed(:error, req, state) do
+    Logger.error("bad bindings: #{inspect(req.bindings)}")
+    {:ok, :cowboy_req.reply(400, req), state}
   end
 
   def parse_bindings(%{:hash => hash, :ts => ts, :type => "primary"}) do
@@ -83,6 +82,8 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
   end
 
   def find_media(path, fileName) do
+    # XXX: need to flip this around: look up the metadatas FIRST, get content type from that to determine
+    # extension then NO NEED to File.ls!() anything!
     case File.stat(path) do
       {:ok, _stat} ->
         # should only refresh the list when stat.mtime has changed?!
