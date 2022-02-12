@@ -3,8 +3,6 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
 
   def init(req, [headerName, mediaDataPath])
       when is_map_key(req.headers, headerName) and (req.method === "HEAD" or req.method === "GET") do
-    IO.puts(inspect(req))
-
     HLTE.HTTP.calculate_body_hmac(req.path)
     |> auth_check(Map.get(req.headers, headerName), req, [headerName, mediaDataPath])
   end
@@ -33,27 +31,12 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
       {:ok, [full_path, stat]} ->
         case metadata(mediaDataPath |> Path.expand(), type, hash, ts) do
           %{"headers" => headers} ->
-            req_with_meta_headers =
               Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
               |> Enum.to_list()
               |> Enum.reduce(req, fn {k, v}, acc_req ->
                 :cowboy_req.set_resp_header(k, v, acc_req)
               end)
-
-            case req.method do
-              "GET" ->
-                {:ok,
-                 :cowboy_req.reply(
-                   200,
-                   :cowboy_req.set_resp_body(
-                     {:sendfile, 0, stat.size, full_path},
-                     req_with_meta_headers
-                   )
-                 ), [headerName, mediaDataPath]}
-
-              "HEAD" ->
-                {:ok, :cowboy_req.reply(204, req_with_meta_headers), [headerName, mediaDataPath]}
-            end
+              |> success_reply(stat, full_path, [headerName, mediaDataPath])
 
           _ ->
             Logger.warn("No metadata found! full_path:#{full_path} hash:#{hash} ts:#{ts}")
@@ -72,6 +55,23 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
   def handle_allowed(:error, req, state) do
     Logger.error("bad bindings: #{inspect(req.bindings)}")
     {:ok, :cowboy_req.reply(400, req), state}
+  end
+
+  def success_reply(req_with_meta_headers, stat, full_path, [headerName, mediaDataPath])
+      when req_with_meta_headers.method === "GET" do
+    {:ok,
+     :cowboy_req.reply(
+       200,
+       :cowboy_req.set_resp_body(
+         {:sendfile, 0, stat.size, full_path},
+         req_with_meta_headers
+       )
+     ), [headerName, mediaDataPath]}
+  end
+
+  def success_reply(req_with_meta_headers, _s, _fp, [headerName, mediaDataPath])
+      when req_with_meta_headers.method === "HEAD" do
+    {:ok, :cowboy_req.reply(204, req_with_meta_headers), [headerName, mediaDataPath]}
   end
 
   def parse_bindings(%{:hash => hash, :ts => ts, :type => "primary"}) do
