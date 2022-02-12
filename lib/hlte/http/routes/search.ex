@@ -21,6 +21,7 @@ defmodule HLTE.HTTP.Route.Search do
   end
 
   def get_json(req, [headerName]) when is_map_key(req.headers, headerName) do
+    # XXX: must check that the request timestamp isn't too much in the past, to close the reuse vector!!
     %{d: newestFirst, l: limit, q: query} = :cowboy_req.match_qs([:d, :l, :q], req)
 
     case search(

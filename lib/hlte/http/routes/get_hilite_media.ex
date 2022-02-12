@@ -12,7 +12,8 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
   end
 
   def auth_check(calced_hmac, sent_hmac, req, [headerName, data_path])
-      when sent_hmac !== calced_hmac do
+      when sent_hmac === calced_hmac do
+    # XXX: must check that the request timestamp isn't too much in the past, to close the reuse vector!!
     parse_bindings(req.bindings)
     |> handle_allowed(req, [headerName, data_path])
   end
@@ -44,34 +45,6 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
       _ ->
         Logger.error("bad metadata!")
         not_found_reply(req, [headerName, data_path])
-    end
-  end
-
-  def handle_allowed([type, basename, hash, ts], req, [headerName, data_path]) do
-    path_expand = Path.join([data_path, type]) |> Path.expand()
-
-    case find_media(path_expand, basename) do
-      {:ok, [full_path, stat]} ->
-        case metadata(data_path |> Path.expand(), type, hash, ts) do
-          %{"headers" => headers} ->
-            Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
-            |> Enum.to_list()
-            |> Enum.reduce(req, fn {k, v}, acc_req ->
-              :cowboy_req.set_resp_header(k, v, acc_req)
-            end)
-            |> success_reply(stat, full_path, [headerName, data_path])
-
-          _ ->
-            Logger.warn("No metadata found! full_path:#{full_path} hash:#{hash} ts:#{ts}")
-            {:ok, req, [headerName, data_path]}
-        end
-
-      {:error, reason} ->
-        if reason !== :not_found do
-          Logger.error("find_media failed: #{reason}")
-        end
-
-        {:ok, :cowboy_req.reply(404, req), [headerName, data_path]}
     end
   end
 
@@ -121,33 +94,5 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
     Jason.decode!(
       File.read!(Path.expand(Path.join([path, "metadata", "#{hash}-#{ts}.#{type}.json"])))
     )
-  end
-
-  def find_media(path, basename) do
-    # XXX: need to flip this around: look up the metadatas FIRST, get content type from that to determine
-    # extension then NO NEED to File.ls!() anything!
-    case File.stat(path) do
-      {:ok, _stat} ->
-        # should only refresh the list when stat.mtime has changed?!
-        # could store the cache in ETS
-        case File.ls!(path)
-             |> Enum.map(fn x -> String.split(x, ".") end)
-             |> Enum.filter(fn x -> Enum.at(x, 0) === basename end)
-             |> Enum.map(fn x -> Path.expand(Path.join([path, Enum.join(x, ".")])) end)
-             |> Enum.map(fn x -> [x, File.stat!(x)] end) do
-          found_list when length(found_list) === 1 ->
-            {:ok, Enum.at(found_list, 0)}
-
-          found_list when length(found_list) > 1 ->
-            {:error, :multiple_found}
-
-          _ ->
-            {:error, :not_found}
-        end
-
-      {:error, reason} ->
-        Logger.warn("Stat failure for #{path}: #{reason}")
-        {:error, reason}
-    end
   end
 end
