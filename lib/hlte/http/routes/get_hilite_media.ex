@@ -16,27 +16,29 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
         path_expand = Path.join([Enum.at(state, 1), type]) |> Path.expand()
 
         case find_media(path_expand, fileName) do
-          {:ok, [[[base, ext], full_path], stat]} ->
+          {:ok, [full_path, stat]} ->
             case metadata(Enum.at(state, 1) |> Path.expand(), type, hash, ts) do
               %{"headers" => headers} ->
-                final_req =
+                req_with_meta_headers =
                   Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
                   |> Enum.to_list()
                   |> Enum.reduce(req, fn {k, v}, acc_req ->
-                    IO.puts("\n\n!!!! #{k}:#{v} -- #{inspect(acc_req)}")
                     :cowboy_req.set_resp_header(k, v, acc_req)
                   end)
 
-                IO.puts("FINAL REQ #{inspect(final_req)}")
-
                 case req.method do
                   "GET" ->
-                    IO.puts("GET! Adding body -- #{inspect({:sendfile, 0, stat.size, full_path})}")
-                    {:ok, :cowboy_req.reply(200,
-                      :cowboy_req.set_resp_body({:sendfile, 0, stat.size, full_path}, final_req)), state}
+                    {:ok,
+                     :cowboy_req.reply(
+                       200,
+                       :cowboy_req.set_resp_body(
+                         {:sendfile, 0, stat.size, full_path},
+                         req_with_meta_headers
+                       )
+                     ), state}
 
                   "HEAD" ->
-                    {:ok, :cowboy_req.reply(204, final_req), state}
+                    {:ok, :cowboy_req.reply(204, req_with_meta_headers), state}
                 end
 
               _ ->
@@ -88,8 +90,8 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
         case File.ls!(path)
              |> Enum.map(fn x -> String.split(x, ".") end)
              |> Enum.filter(fn x -> Enum.at(x, 0) === fileName end)
-             |> Enum.map(fn x -> [x, Path.expand(Path.join([path, Enum.join(x, ".")]))] end)
-             |> Enum.map(fn x -> [x, File.stat!(Enum.at(x, 1))] end) do
+             |> Enum.map(fn x -> Path.expand(Path.join([path, Enum.join(x, ".")])) end)
+             |> Enum.map(fn x -> [x, File.stat!(x)] end) do
           found_list when length(found_list) === 1 ->
             {:ok, Enum.at(found_list, 0)}
 
