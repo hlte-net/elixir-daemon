@@ -1,22 +1,35 @@
 defmodule HLTE.HTTP.Route.GetHiliteMedia do
   require Logger
 
-  def init(req, state) when req.method === "HEAD" or req.method === "GET" do
-    # TODO: AUTH!
-    parse_bindings(req.bindings)
-    |> handle_allowed(req, state)
+  def init(req, [headerName, mediaDataPath])
+      when is_map_key(req.headers, headerName) and (req.method === "HEAD" or req.method === "GET") do
+    IO.puts(inspect(req))
+
+    calced_hmac = HLTE.HTTP.calculate_body_hmac(req.path)
+
+    case Map.get(req.headers, headerName) === calced_hmac do
+      true ->
+        parse_bindings(req.bindings)
+        |> handle_allowed(req, [headerName, mediaDataPath])
+
+      false ->
+        Logger.critical("Unauthorized! #{req.method} #{req.path}")
+        Logger.warn("#{calced_hmac} !== #{Map.get(req.headers, headerName)}")
+        Logger.warn("Full request: #{inspect(req)}")
+        {:ok, :cowboy_req.reply(403, req), [headerName, mediaDataPath]}
+    end
   end
 
   def init(req, state) do
     {:ok, :cowboy_req.reply(405, req), state}
   end
 
-  def handle_allowed([type, basename, hash, ts], req, state) do
-    path_expand = Path.join([Enum.at(state, 1), type]) |> Path.expand()
+  def handle_allowed([type, basename, hash, ts], req, [headerName, mediaDataPath]) do
+    path_expand = Path.join([mediaDataPath, type]) |> Path.expand()
 
     case find_media(path_expand, basename) do
       {:ok, [full_path, stat]} ->
-        case metadata(Enum.at(state, 1) |> Path.expand(), type, hash, ts) do
+        case metadata(mediaDataPath |> Path.expand(), type, hash, ts) do
           %{"headers" => headers} ->
             req_with_meta_headers =
               Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
@@ -34,15 +47,15 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
                      {:sendfile, 0, stat.size, full_path},
                      req_with_meta_headers
                    )
-                 ), state}
+                 ), [headerName, mediaDataPath]}
 
               "HEAD" ->
-                {:ok, :cowboy_req.reply(204, req_with_meta_headers), state}
+                {:ok, :cowboy_req.reply(204, req_with_meta_headers), [headerName, mediaDataPath]}
             end
 
           _ ->
             Logger.warn("No metadata found! full_path:#{full_path} hash:#{hash} ts:#{ts}")
-            {:ok, req, state}
+            {:ok, req, [headerName, mediaDataPath]}
         end
 
       {:error, reason} ->
@@ -50,7 +63,7 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
           Logger.error("find_media failed: #{reason}")
         end
 
-        {:ok, :cowboy_req.reply(404, req), state}
+        {:ok, :cowboy_req.reply(404, req), [headerName, mediaDataPath]}
     end
   end
 
