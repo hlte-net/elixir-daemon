@@ -5,12 +5,12 @@ defmodule HLTE.HTTP do
 
   def start_link(args), do: Task.start_link(__MODULE__, :run, [args])
 
-  def run([listen_port, headerName]) when is_number(listen_port) do
+  def run([listen_port, headerName, mediaDataPath]) when is_number(listen_port) do
     {:ok, _} =
       :cowboy.start_clear(
         :http,
         [{:port, listen_port}],
-        %{:env => %{:dispatch => build_dispatch(headerName)}}
+        %{:env => %{:dispatch => build_dispatch(headerName, mediaDataPath)}}
       )
 
     Logger.notice("HTTP listening on port #{listen_port}")
@@ -18,7 +18,7 @@ defmodule HLTE.HTTP do
     :ok
   end
 
-  def build_dispatch(headerName) do
+  def build_dispatch(headerName, mediaDataPath) do
     :cowboy_router.compile([
       # bind to all interfaces, a la "0.0.0.0"
       {:_,
@@ -29,7 +29,8 @@ defmodule HLTE.HTTP do
 
          # GET
          {"/version", HLTE.HTTP.Route.Version, []},
-         {"/search", HLTE.HTTP.Route.Search, [headerName]}
+         {"/search", HLTE.HTTP.Route.Search, [headerName]},
+         {"/:hash/:ts/[:type]", HLTE.HTTP.Route.GetHiliteMedia, [headerName, mediaDataPath]}
        ]}
     ])
   end

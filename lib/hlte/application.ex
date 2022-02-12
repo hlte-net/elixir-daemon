@@ -49,7 +49,7 @@ defmodule HLTE.Application do
     children = [
       {Task.Supervisor, name: HLTE.AsyncSupervisor},
       {HLTE.EmailProcessor, name: EmailProcessor},
-      {HLTE.HTTP, [args[:port], args[:header]]},
+      {HLTE.HTTP, [args[:port], args[:header], args[:media_data_path]]},
       {HLTE.DB, [args[:db_path]]}
     ]
 
