@@ -11,10 +11,10 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
     {:ok, :cowboy_req.reply(405, req), state}
   end
 
-  def handle_allowed([type, fileName, hash, ts], req, state) do
+  def handle_allowed([type, basename, hash, ts], req, state) do
     path_expand = Path.join([Enum.at(state, 1), type]) |> Path.expand()
 
-    case find_media(path_expand, fileName) do
+    case find_media(path_expand, basename) do
       {:ok, [full_path, stat]} ->
         case metadata(Enum.at(state, 1) |> Path.expand(), type, hash, ts) do
           %{"headers" => headers} ->
@@ -81,7 +81,7 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
     )
   end
 
-  def find_media(path, fileName) do
+  def find_media(path, basename) do
     # XXX: need to flip this around: look up the metadatas FIRST, get content type from that to determine
     # extension then NO NEED to File.ls!() anything!
     case File.stat(path) do
@@ -90,7 +90,7 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
         # could store the cache in ETS
         case File.ls!(path)
              |> Enum.map(fn x -> String.split(x, ".") end)
-             |> Enum.filter(fn x -> Enum.at(x, 0) === fileName end)
+             |> Enum.filter(fn x -> Enum.at(x, 0) === basename end)
              |> Enum.map(fn x -> Path.expand(Path.join([path, Enum.join(x, ".")])) end)
              |> Enum.map(fn x -> [x, File.stat!(x)] end) do
           found_list when length(found_list) === 1 ->
