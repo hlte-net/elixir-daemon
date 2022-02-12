@@ -2,29 +2,41 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
   require Logger
 
   def init(req, state) when req.method === "HEAD" do
-    IO.puts("HEAD #{inspect(req)} #{inspect(state)}")
+    handle_allowed(req, state, 204)
+  end
 
+  def init(req, state) when req.method === "GET" do
+    handle_allowed(req, state, 200)
+  end
+
+  def init(req, state) do
+    {:ok, :cowboy_req.reply(405, req), state}
+  end
+
+  def handle_allowed(req, state, final_success_code) do
     case parse_bindings(req.bindings) do
       [type, fileName, hash, ts] ->
-        IO.puts(inspect(type))
-        IO.puts(inspect(fileName))
-
         path_expand = Path.join([Enum.at(state, 1), type]) |> Path.expand()
 
         case find_media(path_expand, fileName) do
           {:ok, [[[base, ext], full_path], stat]} ->
-            IO.puts(inspect(stat))
-            IO.puts(path_expand)
-            IO.puts(full_path)
-
             case metadata(Enum.at(state, 1) |> Path.expand(), type, hash, ts) do
               %{"headers" => headers} ->
-                Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
-                |> Enum.to_list()
-                |> Enum.each(fn [k, v] -> IO.puts("-- #{k} -> #{v}") end)
-            end
+                final_req =
+                  Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
+                  |> Enum.to_list()
+                  |> Enum.reduce(req, fn {k, v}, acc_req ->
+                    IO.puts("\n\n!!!! #{k}:#{v} -- #{inspect(acc_req)}")
+                    :cowboy_req.set_resp_header(k, v, acc_req)
+                  end)
 
-            {:ok, req, state}
+                IO.puts("FINAL REQ #{inspect(final_req)}")
+                {:ok, :cowboy_req.reply(final_success_code, final_req), state}
+
+              _ ->
+                Logger.warn("No metadata found! full_path:#{full_path} hash:#{hash} ts:#{ts}")
+                {:ok, req, state}
+            end
 
           {:error, reason} ->
             if reason !== :not_found do
@@ -38,15 +50,6 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
         Logger.error("bad bindings: #{inspect(req.bindings)}")
         {:ok, :cowboy_req.reply(400, req), state}
     end
-  end
-
-  def init(req, state) when req.method === "GET" do
-    IO.puts("GET #{inspect(req)} #{inspect(state)}")
-    {:ok, req, state}
-  end
-
-  def init(req, state) do
-    {:ok, :cowboy_req.reply(405, req), state}
   end
 
   def parse_bindings(%{:hash => hash, :ts => ts, :type => "primary"}) do
