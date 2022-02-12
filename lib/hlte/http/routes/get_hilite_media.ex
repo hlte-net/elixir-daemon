@@ -5,23 +5,25 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
       when is_map_key(req.headers, headerName) and (req.method === "HEAD" or req.method === "GET") do
     IO.puts(inspect(req))
 
-    calced_hmac = HLTE.HTTP.calculate_body_hmac(req.path)
-
-    case Map.get(req.headers, headerName) === calced_hmac do
-      true ->
-        parse_bindings(req.bindings)
-        |> handle_allowed(req, [headerName, mediaDataPath])
-
-      false ->
-        Logger.critical("Unauthorized! #{req.method} #{req.path}")
-        Logger.warn("#{calced_hmac} !== #{Map.get(req.headers, headerName)}")
-        Logger.warn("Full request: #{inspect(req)}")
-        {:ok, :cowboy_req.reply(403, req), [headerName, mediaDataPath]}
-    end
+    HLTE.HTTP.calculate_body_hmac(req.path)
+    |> auth_check(Map.get(req.headers, headerName), req, [headerName, mediaDataPath])
   end
 
   def init(req, state) do
     {:ok, :cowboy_req.reply(405, req), state}
+  end
+
+  def auth_check(calced_hmac, sent_hmac, req, [headerName, mediaDataPath])
+      when sent_hmac === calced_hmac do
+    parse_bindings(req.bindings)
+    |> handle_allowed(req, [headerName, mediaDataPath])
+  end
+
+  def auth_check(calced_hmac, sent_hmac, req, [headerName, mediaDataPath]) do
+    Logger.critical("Unauthorized! #{req.method} #{req.path}")
+    Logger.warn("#{calced_hmac} !== #{sent_hmac}")
+    Logger.warn("Full request: #{inspect(req)}")
+    {:ok, :cowboy_req.reply(403, req), [headerName, mediaDataPath]}
   end
 
   def handle_allowed([type, basename, hash, ts], req, [headerName, mediaDataPath]) do
