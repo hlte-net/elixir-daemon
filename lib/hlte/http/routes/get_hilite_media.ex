@@ -25,8 +25,7 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
   end
 
   def handle_allowed([type, basename, hash, ts], req, [header_name, data_path]) do
-    data_path
-    |> Path.expand()
+    Path.expand(data_path)
     |> metadata_parse(type, hash, ts)
     |> metadata_validate({data_path, type, basename, req, header_name})
   end
@@ -94,15 +93,21 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
     [_type, subtype] = Map.get(headers, "content-type") |> String.split("/")
     full_path = Path.join([data_path, type, "#{basename}.#{subtype}"]) |> Path.expand()
     IO.puts("PATH #{full_path}")
-    # FIX!
-    stat = File.stat!(full_path)
 
-    Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
-    |> Enum.to_list()
-    |> Enum.reduce(req, fn {k, v}, acc_req ->
-      :cowboy_req.set_resp_header(k, v, acc_req)
-    end)
-    |> success_reply(stat, full_path, [header_name, data_path])
+    case File.stat(full_path) do
+      {:ok, stat} ->
+        Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
+        |> Enum.to_list()
+        |> Enum.reduce(req, fn {k, v}, acc_req ->
+          :cowboy_req.set_resp_header(k, v, acc_req)
+        end)
+        |> success_reply(stat, full_path, [header_name, data_path])
+
+      {:error, reason} ->
+        Logger.error("File.stat failed on '#{full_path}'")
+        Logger.error("   #{reason}")
+        not_found_reply(req, [header_name, data_path])
+    end
   end
 
   def metadata_validate(error, {data_path, _t, _bn, req, header_name}) do
