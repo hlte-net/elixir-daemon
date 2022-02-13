@@ -129,7 +129,8 @@ defmodule HLTE.DB do
     {:ok, rows, rowSpec} =
       Basic.exec(
         conn,
-        "select * from hlte
+        "select checksum, timestamp, primaryURI,
+        secondaryURI, hilite, annotation from hlte
       where hilite like '%' || ? || '%'
       or annotation like '%' || ? || '%'
       or primaryURI like '%' || ? || '%'
@@ -150,7 +151,12 @@ defmodule HLTE.DB do
     # transform into a list of maps with key names based on the row names in `rowSpec`
     Enum.map(rows, fn ele ->
       Enum.reduce(0..(length(rowSpec) - 1), %{}, fn idx, acc ->
-        Map.put(acc, Enum.at(rowSpec, idx), Enum.at(ele, idx))
+        key = Enum.at(rowSpec, idx)
+
+        case key do
+          "timestamp" -> Map.put(acc, key, to_string(Enum.at(ele, idx)))
+          _ -> Map.put(acc, key, Enum.at(ele, idx))
+        end
       end)
     end)
   end
