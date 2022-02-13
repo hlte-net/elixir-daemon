@@ -79,11 +79,11 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
       Jason.decode!(File.read!(full_path))
     rescue
       fe in File.Error ->
-        Logger.error("Metadata missing, expected at '#{fe.path}'")
+        Logger.error("Metadata missing, expected at #{fe.path}")
         :not_found
 
       je in Jason.DecodeError ->
-        HLTE.LoggingUtil.log_json_error(je, "metadata file at '#{full_path}")
+        HLTE.LoggingUtil.log_json_error(je, "metadata file at #{full_path}")
         :not_found
     end
   end
@@ -103,7 +103,7 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
         |> success_reply(stat, full_path, [header_name, data_path])
 
       {:error, reason} ->
-        Logger.error("File.stat failed on '#{full_path}'")
+        Logger.error("File.stat failed on #{full_path}")
         Logger.error("   #{reason}")
         not_found_reply(req, [header_name, data_path])
     end
