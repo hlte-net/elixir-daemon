@@ -92,7 +92,6 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
       when is_map_key(headers, "content-type") do
     [_type, subtype] = Map.get(headers, "content-type") |> String.split("/")
     full_path = Path.join([data_path, type, "#{basename}.#{subtype}"]) |> Path.expand()
-    IO.puts("PATH #{full_path}")
 
     case File.stat(full_path) do
       {:ok, stat} ->
