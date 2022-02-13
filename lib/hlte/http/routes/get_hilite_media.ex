@@ -25,29 +25,10 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
   end
 
   def handle_allowed([type, basename, hash, ts], req, [header_name, data_path]) do
-    case metadata_parse(data_path |> Path.expand(), type, hash, ts) do
-      %{"headers" => headers} when is_map_key(headers, "content-type") ->
-        [_type, subtype] = Map.get(headers, "content-type") |> String.split("/")
-        full_path = Path.join([data_path, type, "#{basename}.#{subtype}"]) |> Path.expand()
-        IO.puts("PATH #{full_path}")
-        # FIX!
-        stat = File.stat!(full_path)
-
-        Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
-        |> Enum.to_list()
-        |> Enum.reduce(req, fn {k, v}, acc_req ->
-          :cowboy_req.set_resp_header(k, v, acc_req)
-        end)
-        |> success_reply(stat, full_path, [header_name, data_path])
-
-      error ->
-        if error !== :not_found do
-          Logger.critical("Unknown error! #{inspect(error)}")
-        end
-
-        Logger.warn("Full request: #{inspect(req)}")
-        not_found_reply(req, [header_name, data_path])
-    end
+    data_path
+    |> Path.expand()
+    |> metadata_parse(type, hash, ts)
+    |> metadata_validate({data_path, type, basename, req, header_name})
   end
 
   def handle_allowed(:error, req, state) do
@@ -106,5 +87,30 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
         HLTE.LoggingUtil.log_json_error(je, "metadata file at '#{full_path}")
         :not_found
     end
+  end
+
+  def metadata_validate(%{"headers" => headers}, {data_path, type, basename, req, header_name})
+      when is_map_key(headers, "content-type") do
+    [_type, subtype] = Map.get(headers, "content-type") |> String.split("/")
+    full_path = Path.join([data_path, type, "#{basename}.#{subtype}"]) |> Path.expand()
+    IO.puts("PATH #{full_path}")
+    # FIX!
+    stat = File.stat!(full_path)
+
+    Map.take(headers, ["content-type", "content-length", "last-modified", "age"])
+    |> Enum.to_list()
+    |> Enum.reduce(req, fn {k, v}, acc_req ->
+      :cowboy_req.set_resp_header(k, v, acc_req)
+    end)
+    |> success_reply(stat, full_path, [header_name, data_path])
+  end
+
+  def metadata_validate(error, {data_path, _t, _bn, req, header_name}) do
+    if error !== :not_found do
+      Logger.critical("Unknown error! #{inspect(error)}")
+    end
+
+    Logger.warn("Full request: #{inspect(req)}")
+    not_found_reply(req, [header_name, data_path])
   end
 end
