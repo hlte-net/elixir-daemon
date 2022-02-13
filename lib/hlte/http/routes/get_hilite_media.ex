@@ -90,7 +90,12 @@ defmodule HLTE.HTTP.Route.GetHiliteMedia do
 
   def metadata_validate(%{"headers" => headers}, {data_path, type, basename, req, header_name})
       when is_map_key(headers, "content-type") do
-    [_type, subtype] = Map.get(headers, "content-type") |> String.split("/")
+    [_type, subtype] =
+      Map.get(headers, "content-type")
+      |> String.split(";")
+      |> Enum.at(0)
+      |> String.split("/")
+
     full_path = Path.join([data_path, type, "#{basename}.#{subtype}"]) |> Path.expand()
 
     case File.stat(full_path) do
