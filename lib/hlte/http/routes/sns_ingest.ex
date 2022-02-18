@@ -49,14 +49,8 @@ defmodule HLTE.HTTP.Route.SNSIngest do
     :error
   end
 
-  defp ingest_post({:error, %Jason.DecodeError{:data => d, :position => p, :token => t}}) do
-    Logger.error("Malformed POST JSON!")
-    Logger.error("   at position #{p}, token '#{t}' in data: #{d}")
-    :error
-  end
-
-  defp ingest_post({:error, unkErr}) do
-    Logger.error("Malformed POST! Unknown error: #{inspect(unkErr)}")
+  defp ingest_post({:error, decode_error}) do
+    HLTE.LoggingUtil.log_json_error(decode_error)
     :error
   end
 end

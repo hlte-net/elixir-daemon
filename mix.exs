@@ -15,10 +15,11 @@ defmodule HLTE.MixProject do
 
   def application do
     envArgs = [
-      header: fe(:header),
+      header: "x-hlte",
       port: fe(:port),
       db_path: fe(:db_path),
-      key_path: fe(:key_path)
+      key_path: fe(:key_path),
+      media_data_path: fe(:media_data_path)
     ]
 
     Logger.notice("App v#{project()[:version]} started with config #{inspect(envArgs)}")
@@ -27,6 +28,7 @@ defmodule HLTE.MixProject do
       extra_applications: [:logger],
       mod: {HLTE.Application, envArgs},
       env: [
+        api_version: "20220126",
         args: envArgs
       ]
     ]
