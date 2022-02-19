@@ -6,8 +6,20 @@ defmodule HLTE.Application do
 
   require Logger
 
+  # https://stackoverflow.com/questions/32968253/access-project-version-within-elixir-application#comment74133074_35704257
+  @version Mix.Project.config()[:version]
+  defp version(), do: @version
+
   @impl true
-  def start(_type, args) do
+  def start(_type, _opts) do
+    args = [
+      header: fe(:header),
+      port: fe(:port),
+      db_path: fe(:db_path),
+      key_path: fe(:key_path),
+      media_data_path: fe(:media_data_path)
+    ]
+
     case load_key(args[:key_path]) do
       {:ok, key} ->
         keyHash = :crypto.hash(:sha256, key) |> :binary.encode_hex() |> :string.lowercase()
@@ -54,6 +66,11 @@ defmodule HLTE.Application do
     ]
 
     opts = [strategy: :one_for_one, name: HLTE.Supervisor]
+
+    Logger.notice("App v#{version()} started with config: #{inspect(args)}")
+
     Supervisor.start_link(children, opts)
   end
+
+  defp fe(k), do: Application.fetch_env!(:hlte, k)
 end

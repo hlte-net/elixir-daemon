@@ -6,7 +6,7 @@ defmodule HLTE.MixProject do
   def project do
     [
       app: :hlte,
-      version: "0.3.0",
+      version: "0.3.1",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -14,22 +14,12 @@ defmodule HLTE.MixProject do
   end
 
   def application do
-    envArgs = [
-      header: "x-hlte",
-      port: fe(:port),
-      db_path: fe(:db_path),
-      key_path: fe(:key_path),
-      media_data_path: fe(:media_data_path)
-    ]
-
-    Logger.notice("App v#{project()[:version]} started with config #{inspect(envArgs)}")
-
     [
       extra_applications: [:logger],
-      mod: {HLTE.Application, envArgs},
+      mod: {HLTE.Application, []},
       env: [
         api_version: "20220126",
-        args: envArgs
+        header: "x-hlte"
       ]
     ]
   end
@@ -46,6 +36,4 @@ defmodule HLTE.MixProject do
       {:mail, "~> 0.2"}
     ]
   end
-
-  defp fe(k), do: Application.fetch_env!(:hlte, k)
 end
