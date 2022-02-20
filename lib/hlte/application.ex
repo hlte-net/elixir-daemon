@@ -20,6 +20,10 @@ defmodule HLTE.Application do
       media_data_path: fe(:media_data_path)
     ]
 
+    if Mix.env() === :test do
+      Path.expand(args[:key_path]) |> File.chmod!(0o400)
+    end
+
     case load_key(args[:key_path]) do
       {:ok, key} ->
         keyHash = :crypto.hash(:sha256, key) |> :binary.encode_hex() |> :string.lowercase()
@@ -33,7 +37,7 @@ defmodule HLTE.Application do
       {:error, reason, expand_path} ->
         Logger.emergency(~s/Failed to load key file at #{expand_path}: "#{reason}"/)
         Logger.flush()
-        System.halt(254)
+        {:error, reason, expand_path}
     end
   end
 
@@ -51,9 +55,6 @@ defmodule HLTE.Application do
 
       {:error, reason} ->
         {:error, reason, expand_path}
-
-      _ ->
-        {:error, "unknown", expand_path}
     end
   end
 

@@ -9,25 +9,31 @@ defmodule HLTE.Redis do
 
   def post_persistence_work(rxTime, hmac, %{"uri" => uri, "secondaryURI" => suri})
       when is_integer(rxTime) do
-    {:ok, conn} = new_conn()
+    # would prefer to do this as "@env Mix.env()" then match on it but:
+    # https://github.com/elixir-lang/elixir/issues/8245
+    if Mix.env() == :test do
+      -42
+    else
+      {:ok, conn} = new_conn()
 
-    {:ok, entryID} =
-      Redix.command(conn, [
-        "XADD",
-        key("persistence"),
-        "*",
-        "checksum",
-        hmac,
-        "timestamp",
-        rxTime,
-        "primaryURI",
-        uri,
-        "secondaryURI",
-        suri
-      ])
+      {:ok, entryID} =
+        Redix.command(conn, [
+          "XADD",
+          key("persistence"),
+          "*",
+          "checksum",
+          hmac,
+          "timestamp",
+          rxTime,
+          "primaryURI",
+          uri,
+          "secondaryURI",
+          suri
+        ])
 
-    Redix.stop(conn)
-    entryID
+      Redix.stop(conn)
+      entryID
+    end
   end
 
   def key_prefix() do

@@ -75,7 +75,7 @@ defmodule HLTE.DB do
     )
   end
 
-  def search(query, limit, newestFirst) do
+  def search(query, limit \\ 10, newestFirst \\ "false") do
     t0 = :erlang.monotonic_time(:millisecond)
 
     searchRes =
