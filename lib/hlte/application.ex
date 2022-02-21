@@ -32,7 +32,13 @@ defmodule HLTE.Application do
 
         Logger.notice("Loaded #{byte_size(key)}-byte key with SHA256 checksum of #{keyHash}")
 
-        start_link(args)
+        {:ok, pid} = start_link(args)
+
+        Logger.notice(
+          "App v#{version()} started as PID #{inspect(pid)} with config: #{inspect(args)}"
+        )
+
+        {:ok, pid}
 
       {:error, reason, expand_path} ->
         Logger.emergency(~s/Failed to load key file at #{expand_path}: "#{reason}"/)
@@ -67,9 +73,6 @@ defmodule HLTE.Application do
     ]
 
     opts = [strategy: :one_for_one, name: HLTE.Supervisor]
-
-    Logger.notice("App v#{version()} started with config: #{inspect(args)}")
-
     Supervisor.start_link(children, opts)
   end
 

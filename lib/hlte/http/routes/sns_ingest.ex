@@ -28,19 +28,20 @@ defmodule HLTE.HTTP.Route.SNSIngest do
               "action" => %{
                 "type" => "S3",
                 "bucketName" => bucket,
-                "objectKey" => objectKey
+                "objectKey" => object_key
               }
             },
             "mail" => %{
               "source" => source,
               "commonHeaders" => %{
                 "subject" => subject
-              }
+              },
+              "destination" => [main_dest]
             }
           }}
        ) do
-    Logger.info("Processing SNS from <#{source}>, subject \"#{subject}\"")
-    HLTE.EmailProcessor.from_bucket(bucket, objectKey, source, subject)
+    Logger.info("Processing SNS (to #{main_dest}) from <#{source}>, subject \"#{subject}\"")
+    HLTE.EmailProcessor.from_bucket(bucket, object_key, main_dest, source, subject)
     :ok
   end
 

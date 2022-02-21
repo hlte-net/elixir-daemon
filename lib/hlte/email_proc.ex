@@ -10,8 +10,8 @@ defmodule HLTE.EmailProcessor do
     GenServer.start_link(__MODULE__, :ok, opts)
   end
 
-  def from_bucket(bucket, key, from, subject) do
-    GenServer.cast(EmailProcessor, {:process_from_bucket, bucket, key, from, subject})
+  def from_bucket(bucket, key, into_addr, from, subject) do
+    GenServer.cast(EmailProcessor, {:process_from_bucket, bucket, key, into_addr, from, subject})
   end
 
   @impl true
@@ -20,14 +20,20 @@ defmodule HLTE.EmailProcessor do
   end
 
   @impl true
-  def handle_cast({:process_from_bucket, bucket, key, from, subject}, state) do
+  def handle_cast({:process_from_bucket, bucket, key, into_addr, from, subject}, state) do
     case Enum.find(Application.fetch_env!(:hlte, :sns_whitelist), fn whiteListedAddress ->
            from === whiteListedAddress
          end) do
       ^from ->
         case URI.parse(subject) |> validate_parsed_subject_uri() do
-          :error -> Logger.error("Malformed URI as subject!")
-          host -> stream_and_parse(bucket, key, subject, host)
+          :error ->
+            case String.split(subject, " ") |> handle_subject_command(into_addr, from) do
+              :error -> Logger.error("Malformed subject!")
+              :ok -> :ok
+            end
+
+          host ->
+            stream_and_parse(bucket, key, subject, host)
         end
 
       nil ->
@@ -39,6 +45,64 @@ defmodule HLTE.EmailProcessor do
     end
 
     {:noreply, [state]}
+  end
+
+  def handle_subject_command([command | args], into_addr, from) do
+    exec_subject_command(command, args)
+    |> send(into_addr, from)
+  end
+
+  def exec_subject_command(cmd, args) when cmd == "!search" do
+    query = Enum.join(args, " ")
+
+    {search_results, runtime} = HLTE.DB.search(query, 25, true)
+    Logger.info("Executed search '#{query}' (via email) in #{runtime}ms")
+
+    {{search_results, runtime}
+     |> format_search_results_plaintext(),
+     "#{length(search_results)} search results for '#{query}'"}
+  end
+
+  def exec_subject_command(cmd, _args) when cmd == "!system" or cmd == "!systemInfo" do
+    {[
+       "Build info: #{inspect(System.build_info())}",
+       "Schedulers: #{System.schedulers()} (#{System.schedulers_online()} online)",
+       "Version: #{System.version()}",
+       "App spec: #{inspect(Application.spec(:hlte))}",
+       "No. Processes: #{length(Process.list())}",
+       "CPU: #{:cpu_sup.avg1()}, #{:cpu_sup.avg5()}, #{:cpu_sup.avg15()} (util: #{:cpu_sup.util()})",
+       "Memory: #{inspect(:memsup.get_system_memory_data())}",
+       "Disk: #{inspect(:disksup.get_disk_data())}"
+     ]
+     |> Enum.join("\n"), "hlte system info"}
+  end
+
+  defp filtered_key(map, key, head, tail) do
+    Map.get(map, key)
+    |> then(fn
+      nil ->
+        ""
+
+      val ->
+        case String.length(val) do
+          0 -> ""
+          _ -> "#{head}#{val}#{tail}\n"
+        end
+    end)
+  end
+
+  def format_search_results_plaintext({search_results, runtime}) do
+    search_results
+    |> Enum.map(fn sr ->
+      local_filt_key = fn k, h, t -> filtered_key(sr, k, h, t) end
+
+      "____________________________________________________________________________________" <>
+      local_filt_key.("hilite", "\"", "\"") <>
+        local_filt_key.("annotation", "[ ", " ]") <>
+        "-- #{Map.get(sr, "primaryURI")}#{local_filt_key.("secondaryURI", "\n(", ")")}"
+    end)
+    |> Enum.join("\n\n")
+    |> then(fn s -> s <> "\n(search ran in #{runtime}ms)" end)
   end
 
   def validate_parsed_subject_uri(%URI{:host => host, :scheme => s})
@@ -98,5 +162,45 @@ defmodule HLTE.EmailProcessor do
         :headers => %{"content-type" => content_type}
       }) do
     {content_type |> Enum.at(0), body, "mono"}
+  end
+
+  def send({message, subject}, from, to), do: send(message, subject, from, to)
+
+  def send(message, subject, from, to) do
+    ts = System.os_time(:millisecond)
+
+    {:ok,
+     %{
+       body: resp_body,
+       headers: [
+         {"Date", send_date},
+         {"Content-Type", "text/xml"},
+         {"Content-Length", email_length_bytes},
+         {"Connection", "keep-alive"},
+         {"x-amzn-RequestId", aws_req_id}
+       ],
+       status_code: status
+     }} =
+      ExAws.SES.send_email(
+        %{to: [to], cc: [], bcc: []},
+        %{
+          "body" => %{
+            "text" => %{"data" => message <> "\n\n<< sent at #{ts} >>", "charset" => "utf8"}
+          },
+          "subject" => %{"data" => subject, "charset" => "utf8"}
+        },
+        from,
+        [
+          {
+            :configuration_set_name,
+            "default"
+          }
+        ]
+      )
+      |> ExAws.request()
+
+    Logger.info(
+      "Sent #{email_length_bytes} bytes at #{send_date}, request ID #{aws_req_id} (#{status}):\n#{resp_body}"
+    )
   end
 end
