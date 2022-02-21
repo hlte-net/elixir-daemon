@@ -15,7 +15,7 @@ defmodule HLTE.MixProject do
 
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :os_mon],
       mod: {HLTE.Application, []},
       env: [
         api_version: "20220126",
@@ -32,6 +32,7 @@ defmodule HLTE.MixProject do
       {:redix, "~> 1.1"},
       {:ex_aws, "~> 2.2"},
       {:ex_aws_s3, "~> 2.3"},
+      {:ex_aws_ses, "~> 2.3"},
       {:hackney, "~> 1.18"},
       {:mail, "~> 0.2"}
     ]

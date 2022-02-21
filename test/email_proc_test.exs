@@ -12,7 +12,7 @@ defmodule HLTE.EmailProcessor.Test do
   test "manual from_bucket" do
     {:noreply, [[]]} =
       HLTE.EmailProcessor.handle_cast(
-        {:process_from_bucket, "bucket", "key", "bad_from", "subject"},
+        {:process_from_bucket, "bucket", "key", "into_addr", "bad_from", "subject"},
         []
       )
   end
