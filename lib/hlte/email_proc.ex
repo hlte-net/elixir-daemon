@@ -96,10 +96,10 @@ defmodule HLTE.EmailProcessor do
     |> Enum.map(fn sr ->
       local_filt_key = fn k, h, t -> filtered_key(sr, k, h, t) end
 
-      "____________________________________________________________________________________" <>
       local_filt_key.("hilite", "\"", "\"") <>
         local_filt_key.("annotation", "[ ", " ]") <>
-        "-- #{Map.get(sr, "primaryURI")}#{local_filt_key.("secondaryURI", "\n(", ")")}"
+        "-- #{Map.get(sr, "primaryURI")}#{local_filt_key.("secondaryURI", "\n(", ")")}" <>
+        "\n______________________________\n"
     end)
     |> Enum.join("\n\n")
     |> then(fn s -> s <> "\n(search ran in #{runtime}ms)" end)
@@ -167,7 +167,7 @@ defmodule HLTE.EmailProcessor do
   def send({message, subject}, from, to), do: send(message, subject, from, to)
 
   def send(message, subject, from, to) do
-    ts = System.os_time(:millisecond)
+    ts = System.os_time(:second)
 
     {:ok,
      %{
