@@ -43,6 +43,8 @@ defmodule HLTE.EmailProcessor do
                   into_addr,
                   from
                 )
+
+              :ok -> :ok
             end
         end
 
