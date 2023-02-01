@@ -42,6 +42,8 @@ defmodule HLTE.DB do
     {:ok, [[count]], ["count(*)"]} =
       Basic.exec(conn, "SELECT count(*) FROM hlte;") |> Basic.rows()
 
+    Basic.exec(conn, "PRAGMA busy_timeout = 5000;")
+
     {:loaded, count}
   end
 

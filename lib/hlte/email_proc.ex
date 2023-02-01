@@ -33,7 +33,17 @@ defmodule HLTE.EmailProcessor do
             end
 
           host ->
-            stream_and_parse(bucket, key, subject, host)
+            case stream_and_parse(bucket, key, subject, host) do
+              {:error, message} ->
+                Logger.error("email_proc.stream_and_parse failed: #{message}")
+
+                send(
+                  "Original subject: #{subject}\nError: #{message}",
+                  "Capture failed",
+                  into_addr,
+                  from
+                )
+            end
         end
 
       nil ->
@@ -112,38 +122,43 @@ defmodule HLTE.EmailProcessor do
   def validate_parsed_subject_uri(_bad_uri), do: :error
 
   def stream_and_parse(bucket, key, uri, host) do
-    {content_type, parsed_body, part_type} =
-      ExAws.S3.download_file(bucket, key, :memory)
-      |> ExAws.stream!()
-      |> Stream.chunk_while(
-        "",
-        fn cur, acc ->
-          {:cont, cur, acc <> cur}
-        end,
-        fn
-          "" -> {:cont, ""}
-          acc -> {:cont, acc, ""}
-        end
-      )
-      |> Enum.to_list()
-      |> Enum.at(0)
-      |> Mail.Parsers.RFC2822.parse()
-      |> extract_body()
+    try do
+      {content_type, parsed_body, part_type} =
+        ExAws.S3.download_file(bucket, key, :memory)
+        |> ExAws.stream!()
+        |> Stream.chunk_while(
+          "",
+          fn cur, acc ->
+            {:cont, cur, acc <> cur}
+          end,
+          fn
+            "" -> {:cont, ""}
+            acc -> {:cont, acc, ""}
+          end
+        )
+        |> Enum.to_list()
+        |> Enum.at(0)
+        |> Mail.Parsers.RFC2822.parse()
+        |> extract_body()
 
-    Logger.info(
-      "Parsed #{String.length(parsed_body)} bytes of '#{content_type}' from a #{part_type} message"
-    )
-
-    {:ok, rxTime, entryID} =
-      HLTE.DB.persist(
-        %{
-          "uri" => uri,
-          "data" => parsed_body
-        },
-        HLTE.HTTP.calculate_body_hmac(parsed_body)
+      Logger.info(
+        "Parsed #{String.length(parsed_body)} bytes of '#{content_type}' from a #{part_type} message"
       )
 
-    Logger.info("Persisted hilite for #{host} at #{floor(rxTime / 1.0e9)}, work ID #{entryID}")
+      {:ok, rxTime, entryID} =
+        HLTE.DB.persist(
+          %{
+            "uri" => uri,
+            "data" => parsed_body
+          },
+          HLTE.HTTP.calculate_body_hmac(parsed_body)
+        )
+
+      Logger.info("Persisted hilite for #{host} at #{floor(rxTime / 1.0e9)}, work ID #{entryID}")
+    rescue
+      e ->
+        {:error, "Failed to stream #{bucket}/#{key}: #{e.message}"}
+    end
   end
 
   def extract_body(%Mail.Message{:multipart => true, :parts => parts}) do
