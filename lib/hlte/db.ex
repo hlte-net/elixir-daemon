@@ -67,6 +67,16 @@ defmodule HLTE.DB do
     )
   end
 
+  def persist(%{"uri" => uri, "data" => data, "annotation" => ann}, hmac) do
+    persist_async(
+      uri,
+      nil,
+      data,
+      ann,
+      hmac
+    )
+  end
+
   def persist(%{"uri" => uri, "data" => data}, hmac) do
     persist_async(
       uri,
