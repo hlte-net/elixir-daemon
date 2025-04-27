@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mix format:*)",
+      "Bash(mix help:*)",
+      "Bash(npm run:*)"
+    ],
+    "deny": []
+  }
+}

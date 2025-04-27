@@ -32,6 +32,7 @@ defmodule HLTE.HTTP do
          {"/search", HLTE.HTTP.Route.Search, [header_name]},
          {"/tags", HLTE.HTTP.Route.TopTags, []},
          {"/tags/recent", HLTE.HTTP.Route.RecentTags, []},
+         {"/stats", HLTE.HTTP.Route.DBStats, []},
          {"/:req_ts/:hash/:ts/[:type]", HLTE.HTTP.Route.GetHiliteMedia,
           [header_name, media_data_path]}
        ]}
