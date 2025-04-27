@@ -75,7 +75,7 @@ defmodule HLTE.HTTP.Route.DBStats do
     now = :os.system_time(:second)
 
     case :persistent_term.get({:stats_cache, cache_key}, :not_found) do
-      {:cached, timestamp, data} when now - timestamp < 300 ->
+      {:cached, timestamp, data} when now - timestamp < 60 ->
         # Cache hit - return cached data
         data
 
