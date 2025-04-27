@@ -16,6 +16,7 @@ defmodule HLTE.Application do
       header: fe(:header),
       port: fe(:port),
       db_path: fe(:db_path),
+      tags_db_path: fe(:tags_db_path),
       key_path: fe(:key_path),
       media_data_path: fe(:media_data_path)
     ]
@@ -69,7 +70,8 @@ defmodule HLTE.Application do
       {Task.Supervisor, name: HLTE.AsyncSupervisor},
       {HLTE.EmailProcessor, name: EmailProcessor},
       {HLTE.HTTP, [args[:port], args[:header], args[:media_data_path]]},
-      {HLTE.DB, [args[:db_path]]}
+      {HLTE.DB, [args[:db_path]]},
+      {HLTE.TagsDB, [args[:tags_db_path]]}
     ]
 
     opts = [strategy: :one_for_one, name: HLTE.Supervisor]

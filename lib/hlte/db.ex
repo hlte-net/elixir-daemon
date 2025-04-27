@@ -86,6 +86,42 @@ defmodule HLTE.DB do
       hmac
     )
   end
+  
+  # Handle the case where the map contains secondaryURI and data but no URI
+  def persist(%{"secondaryURI" => suri, "data" => data, "annotation" => ann}, hmac) do
+    Logger.info("Persist request with secondaryURI but no primary URI, using secondaryURI as primary")
+    persist_async(
+      suri,  # Use secondaryURI as the primary URI
+      nil,
+      data,
+      ann,
+      hmac
+    )
+  end
+  
+  # Handle any other structure that doesn't match the expected patterns
+  def persist(data, hmac) do
+    # Log the structure for debugging (limiting output length for very large payloads)
+    truncated_data = 
+      data
+      |> inspect(pretty: true, limit: 500)
+      |> String.slice(0..1000)
+      
+    Logger.warning("Unmatched structure in persist call: #{truncated_data}")
+    
+    # Try to extract useful fields if possible
+    uri = Map.get(data, "uri") || Map.get(data, "secondaryURI") || "unknown"
+    secondary_uri = if Map.get(data, "uri"), do: Map.get(data, "secondaryURI"), else: nil
+    content = Map.get(data, "data")
+    annotation = Map.get(data, "annotation")
+    
+    if uri != "unknown" && content do
+      Logger.info("Attempting to recover and store data with extracted fields")
+      persist_async(uri, secondary_uri, content, annotation, hmac)
+    else
+      {:error, :invalid_structure}
+    end
+  end
 
   def search(query, limit \\ 10, newestFirst \\ "false") do
     t0 = :erlang.monotonic_time(:millisecond)

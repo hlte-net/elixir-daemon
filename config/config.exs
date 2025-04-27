@@ -2,7 +2,8 @@ import Config
 
 config :hlte,
   port: 56555,
-  db_path: "./data.sqlite3",
+  db_path: "./newdata.sqlite3",
+  tags_db_path: "./tags.sqlite3",
   key_path: "./.keyfile",
   redis_url: nil,
   sns_whitelist: [],
